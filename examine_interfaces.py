@@ -1,8 +1,14 @@
 import platform
 import netifaces
+import socket
 
 
-def get_interfaces(AF=netifaces.AF_INET):
+def get_interfaces(host=None):
+    if not isinstance(host, str):
+        raise TypeError("host must be a string")
+
+    AF = netifaces.AF_INET
+
     info_dict = {'identifier': None, 'ip_list': None}
     address_list = []
 
@@ -13,8 +19,18 @@ def get_interfaces(AF=netifaces.AF_INET):
         except KeyError:
             continue
         for address in addresses:
-            if '127.0.0.1' not in address['addr']:
-                address_list.append(address['addr'])
+            ip = address['addr']
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                sock.settimeout(2)
+                sock.bind((ip, 0))
+                try:
+                    sock.connect((host, 80))
+                except OSError:
+                    pass
+                except socket.timeout:
+                    pass
+                else:
+                    address_list.append(ip)
 
     info_dict['ip_list'] = address_list
     return info_dict

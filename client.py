@@ -8,18 +8,18 @@ from examine_interfaces import get_interfaces
 IP_CHECK_INTERVAL = 20
 REGISTRATION_INTERVAL = 10 * 60
 ERROR_INTERVAL = 30
-IP_SHERLOCK_DOMAIN = 'https://ip.semiversus.com'
+IP_SHERLOCK_DOMAIN = 'ip.semiversus.com'
 
 
 def send_data(ip_info):
-    response = requests.post(f'{IP_SHERLOCK_DOMAIN}/api/register', data=json.dumps(ip_info))
+    response = requests.post(f'https://{IP_SHERLOCK_DOMAIN}/api/register', data=json.dumps(ip_info))
     response.raise_for_status()
 
 
 async def send_data_loop_coro():
     while True:
         try:
-            send_data(get_interfaces())
+            send_data(get_interfaces(IP_SHERLOCK_DOMAIN))
             print('data sent')
             await asyncio.sleep(REGISTRATION_INTERVAL)
         except requests.exceptions.HTTPError as e:
@@ -33,7 +33,7 @@ async def send_data_loop_coro():
 async def ip_info_update_coro():
     ip_info = None
     while True:
-        ip_info_new = get_interfaces()
+        ip_info_new = get_interfaces(IP_SHERLOCK_DOMAIN)
 
         if ip_info != ip_info_new:
 
