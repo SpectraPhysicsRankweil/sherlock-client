@@ -9,10 +9,10 @@ def get_interfaces(host=None):
 
     AF = netifaces.AF_INET
 
-    info_dict = {'identifier': None, 'ip_list': None}
+    info_dict = {'hostname': None, 'ip_list': None}
     address_list = []
 
-    info_dict['identifier'] = platform.node()
+    info_dict['hostname'] = platform.node()
     for iface in netifaces.interfaces():
         try:
             addresses = netifaces.ifaddresses(iface)[AF]

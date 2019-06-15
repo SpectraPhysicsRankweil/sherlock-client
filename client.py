@@ -1,17 +1,23 @@
+import os
 import asyncio
 import json
 import requests
+import random
 import signal
 from examine_interfaces import get_interfaces
 
 
-IP_CHECK_INTERVAL = 20
+IP_CHECK_INTERVAL = 15
 REGISTRATION_INTERVAL = 10 * 60
 ERROR_INTERVAL = 30
 IP_SHERLOCK_DOMAIN = 'ip.semiversus.com'
+IDENTIFIER_PATH = '.identifier'
+
+ip_info = {'identifier': f'{random.randint(0, 0xFFFFFFFFFFFFFFFF):016X}'}
 
 
 def send_data(ip_info):
+
     response = requests.post(f'https://{IP_SHERLOCK_DOMAIN}/api/register', data=json.dumps(ip_info))
     response.raise_for_status()
 
@@ -19,7 +25,8 @@ def send_data(ip_info):
 async def send_data_loop_coro():
     while True:
         try:
-            send_data(get_interfaces(IP_SHERLOCK_DOMAIN))
+            ip_info.update(get_interfaces(IP_SHERLOCK_DOMAIN))
+            send_data(ip_info)
             print('data sent')
             await asyncio.sleep(REGISTRATION_INTERVAL)
         except requests.exceptions.HTTPError as e:
@@ -31,20 +38,20 @@ async def send_data_loop_coro():
 
 
 async def ip_info_update_coro():
-    ip_info = None
+    ip_info_old = None
     while True:
-        ip_info_new = get_interfaces(IP_SHERLOCK_DOMAIN)
+        ip_info.update(get_interfaces(IP_SHERLOCK_DOMAIN))
 
-        if ip_info != ip_info_new:
+        if ip_info != ip_info_old:
 
             try:
-                send_data(ip_info_new)
+                send_data(ip_info)
                 print('update ip_info')
-                ip_info = ip_info_new
+                ip_info_old = {**ip_info}
             except Exception as e:
                 print(f'Exception while updating ip_info {repr(e)}')
 
-        print('main')
+        print('try update')
         await asyncio.sleep(IP_CHECK_INTERVAL)
 
 
@@ -56,6 +63,15 @@ if __name__ == "__main__":
     loop = asyncio.get_event_loop()
 
     loop.add_signal_handler(signal.SIGINT, loop.stop)
+
+    if not os.path.exists(IDENTIFIER_PATH):
+        with open(IDENTIFIER_PATH, 'w') as identifier_file:
+            identifier_file.write(ip_info['identifier'])
+    else:
+        with open(IDENTIFIER_PATH, 'r') as identifier_file:
+            ip_info['identifier'] = identifier_file.read()
+
+    print(f'identifier: {ip_info["identifier"]}')
 
     try:
         loop.run_until_complete(main())
